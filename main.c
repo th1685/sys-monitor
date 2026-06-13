@@ -42,7 +42,7 @@ void sample_cpu(cpu_sample_t *out);   // impl differs per OS
 void sample_memory(mem_sample_t *out);
 static void ts_add_ms(struct timespec* out, long ms);
 static int sleep_until(const struct timespec *deadline);
-void sampler_run(long interval_ms);
+void sampler_run(cpu_delta_t* d, long interval_ms);
 static uint64_t safe_substitution(uint64_t new, uint64_t old);
 cpu_delta_t cpu_delta(const cpu_sample_t* new, const cpu_sample_t* old);
 double cpu_usage(const cpu_delta_t* d);
@@ -52,12 +52,13 @@ void write_status(const char* out_path, snapshot* s);
 int main(int argc, char* argv[]) {
     if (argc != 1) return -1;
 
-    cpu_sample_t cpu0 = {0}, cpu1 = {0};
-    mem_sample_t mem0 = {0}, mem1 = {0};
+    cpu_delta_t cpu0 = {0};
+    mem_sample_t mem0 = {0};
+    long interval = 500;
 
-    sample_memory(&mem1);
+    sampler_run(&cpu0, interval);
 
-    printf("free: %llu\n", mem1.free);
+    printf("usage = %f%%\n", cpu_usage(&cpu0));
     return 0;
 }
 
@@ -80,7 +81,7 @@ void sample_cpu(cpu_sample_t *out) {
     }
     
     out->user = (uint64_t)info.cpu_ticks[CPU_STATE_USER];
-    out->system = (uint64_t)info.cpu_ticks[CPU_STATE_IDLE];
+    out->system = (uint64_t)info.cpu_ticks[CPU_STATE_SYSTEM];
     out->idle = (uint64_t)info.cpu_ticks[CPU_STATE_IDLE];
     out->nice = (uint64_t)info.cpu_ticks[CPU_STATE_NICE];
 }
@@ -151,28 +152,23 @@ static int sleep_until(const struct timespec *deadline) {
 }
 
 
-void sampler_run(long interval_ms) {
+void sampler_run(cpu_delta_t* d, long interval_ms) {
     cpu_sample_t prev, now;
-    struct timespec deadline;
-    
-    clock_gettime(CLOCK_MONOTONIC, &deadline);
+    struct timespec ts = {
+        .tv_sec  = interval_ms / 1000,
+        .tv_nsec = (interval_ms % 1000) * 1000000L,
+    };
+
     sample_cpu(&prev);
+    nanosleep(&ts, NULL);
+    sample_cpu(&now);
 
-    for (;;) {
-        ts_add_ms(&deadline, interval_ms);
-        if (sleep_until(&deadline) != 0)
-            break;
-        sample_cpu(&now);
-
-        cpu_delta_t d = cpu_delta(&now, &prev);
-
-        prev = now;
-    }
+    *d = cpu_delta(&now, &prev);
 }
 
 
 static uint64_t safe_substitution(uint64_t new, uint64_t old) {
-    return (new >= old) ? new - old : 0.0;
+    return (new >= old) ? new - old : 0;
 }
 
 
