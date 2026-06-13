@@ -22,7 +22,7 @@ typedef struct {
     double cpu_pct;
     unsigned long mem_used_mb;
     unsigned long mem_total_mb;
-    double load_1m;
+    double loads[3];
 } snapshot;
 
 typedef struct {
@@ -54,11 +54,23 @@ int main(int argc, char* argv[]) {
 
     cpu_delta_t cpu0 = {0};
     mem_sample_t mem0 = {0};
-    long interval = 500;
+    snapshot s = {0};
+    char* filepath = "./monitor.json";
+    long interval = 1000;
 
-    sampler_run(&cpu0, interval);
+    while (true) {
+        sampler_run(&cpu0, interval);
+        sample_memory(&mem0);
 
-    printf("usage = %f%%\n", cpu_usage(&cpu0));
+        s.cpu_pct = cpu_usage(&cpu0);
+        s.mem_used_mb = mem0.active;
+        s.mem_total_mb = mem0.active + mem0.inactive + mem0.free + mem0.wired;
+        getloadavg(s.loads, 3);
+
+        printf("cpu  = %.2f%%\nmem  = %.2f%%\nload = %.2f%%\n\n", s.cpu_pct, (double)s.mem_used_mb / (double)s.mem_total_mb, s.loads[0]);
+        write_status(filepath, &s);
+    }
+
     return 0;
 }
 
@@ -203,14 +215,16 @@ void write_status(const char* out_path, snapshot* s) {
 
     fprintf(f,
         "{\n"
-        "  \"cpu_pct\": %.1f,\n"
+        "  \"cpu_pct\": %.2f,\n"
         "  \"mem_used_mb\": %lu,\n"
         "  \"mem_total_mb\": %lu,\n"
         "  \"load_1m\": %.2f,\n"
+        "  \"load_5m\": %.2f,\n"
+        "  \"load_15m\": %.2f,\n"
         "  \"timestamp\": %ld\n"
         "}\n",
         s->cpu_pct, s->mem_used_mb, s->mem_total_mb,
-        s->load_1m, (long)time(NULL)
+        s->loads[0], s->loads[1], s->loads[2], (long)time(NULL)
     );
 
     fflush(f);
