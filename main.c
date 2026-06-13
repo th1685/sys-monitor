@@ -218,12 +218,13 @@ void write_status(const char* out_path, snapshot* s) {
         "  \"cpu_pct\": %.2f,\n"
         "  \"mem_used_mb\": %lu,\n"
         "  \"mem_total_mb\": %lu,\n"
+        "  \"mem_used_pct\": %.2f,\n"
         "  \"load_1m\": %.2f,\n"
         "  \"load_5m\": %.2f,\n"
         "  \"load_15m\": %.2f,\n"
         "  \"timestamp\": %ld\n"
         "}\n",
-        s->cpu_pct, s->mem_used_mb, s->mem_total_mb,
+        s->cpu_pct, s->mem_used_mb, s->mem_total_mb, (double)s->mem_used_mb / (double)s->mem_total_mb,
         s->loads[0], s->loads[1], s->loads[2], (long)time(NULL)
     );
 
