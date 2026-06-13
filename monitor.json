@@ -1,10 +1,10 @@
 {
-  "cpu_pct": 6.11,
-  "mem_used_mb": 2147549184,
-  "mem_total_mb": 5732548608,
-  "mem_used_pct": 0.37,
-  "load_1m": 1.49,
-  "load_5m": 1.49,
-  "load_15m": 1.45,
-  "timestamp": 1781386936
+  "cpu_pct": 9.86,
+  "mem_used_mb": 2232254464,
+  "mem_total_mb": 5854625792,
+  "mem_used_pct": 0.38,
+  "load_1m": 1.93,
+  "load_5m": 1.75,
+  "load_15m": 1.58,
+  "timestamp": 1781387167
 }

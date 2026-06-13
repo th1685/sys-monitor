@@ -67,8 +67,7 @@ compile_commands.json
 vcpkg_installed/
 
 # data
-config/
-data-output/
+monitor.json
 
 # debug information files
 *.dwo
