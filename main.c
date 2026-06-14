@@ -6,6 +6,7 @@
 #include <time.h>
 #include <errno.h>
 #include <inttypes.h>
+#include <ncurses.h>
 
 #if defined(__APPLE__) || defined(__MACH__)
     #define PLATFORM_MACOS
@@ -101,12 +102,19 @@ int sample_memory(mem_sample_t* out) {
     if (!f) return -1;
     const int MAX_LINE_LENGTH = 128;
     char line[MAX_LINE_LENGTH];
+    int i = 0;
 
     out->free = 1000000;
     out->active = 100000;
     out->inactive = 600000;
     out->wired = 200000;
 
+    while (fgets(line, MAX_LINE_LENGTH, f) && i < 16) {
+        i++;
+        printf("%3d : %s", i, line);
+    }
+
+    fclose(f);
     return 0;
 }
 
