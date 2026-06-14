@@ -97,7 +97,7 @@ int main(int argc, char* argv[]) { //sysmon -f "/file/path/to/log" -v for ncurse
 
     if (ncurses_output) { 
         init_curses();
-        printw("sys-monitor : uptime %l : press 'q' to quit\noutput: %s\n", get_uptime(), filepath);
+        printw("sys-monitor : uptime %ld : press 'q' to quit\noutput: %s\n", get_uptime(), filepath);
 
         while ((ch = getch()) != 'q') {
             move(2, 0);
