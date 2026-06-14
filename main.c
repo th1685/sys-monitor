@@ -76,7 +76,13 @@ int main(int argc, char* argv[]) {
 
         s.cpu_pct = cpu_usage(&cpu0);
         s.mem_used_mb = mem0.active + mem0.wired;
+
+        #if defined(PLATFORM_MACOS)
         s.mem_total_mb = mem0.active + mem0.inactive + mem0.free + mem0.wired + mem0.compressed;
+        #elif defined(PLATFORM_UNIX)
+        s.mem_total_mb = mem0.wired; /*wired used for total in UNIX case*/
+        #endif
+        
         getloadavg(s.loads, 3);
 
         double mem_used_pct = 100.0 * (double)s.mem_used_mb / (double)s.mem_total_mb;
@@ -123,26 +129,14 @@ int sample_memory(mem_sample_t* out) {
     char line[MAX_LINE_LENGTH];
     int i = 0;
 
-    out->wired = 0; //unevictable
     out->compressed = 0;
 
     while (fgets(line, MAX_LINE_LENGTH, f) && i < 8) {
         i++;
-        switch (i) {
-            case 2:
-                sscanf(line, "MemFree: %" PRIu64 " kB", &out->free);
-                break;
-
-            case 7:
-                sscanf(line, "Active: %" PRIu64 " kB", &out->active);
-                break;
-            
-            case 8:
-                sscanf(line, "Inactive: %" PRIu64 " kB", &out->inactive);
-                break;
-            default:
-                continue;
-        }
+        if      (sscanf(line, "MemTotal: %"  PRIu64 " kB", &out->wired)    == 1) {} /*using wired because unused UNIX*/
+        else if (sscanf(line, "MemFree: %"   PRIu64 " kB", &out->free)     == 1) {}
+        else if (sscanf(line, "Active: %"    PRIu64 " kB", &out->active)   == 1) {}
+        else if (sscanf(line, "Inactive: %"  PRIu64 " kB", &out->inactive) == 1) {}
     }
 
     fclose(f);
