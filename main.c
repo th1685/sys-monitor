@@ -98,6 +98,8 @@ int sample_cpu(cpu_sample_t* out) {
 int sample_memory(mem_sample_t* out) {
     FILE *f = fopen("/proc/meminfo", "r");
     if (!f) return -1;
+
+    return 0;
 }
 
 
