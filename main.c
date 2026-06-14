@@ -13,6 +13,7 @@
     #include <mach/mach_host.h>
 #elif defined(unix) || defined(__unix__) || defined(__unix)
     #define PLATFORM_UNIX
+    #include <unistd.h>
 #elif defined(_WIN32) || defined(_WIN64) || defined(CYGWIN)
     #error "windows build not supported"
 #endif
@@ -234,11 +235,11 @@ void write_status(const char* out_path, snapshot* s) {
     );
 
     fflush(f);
-    /*#if defined(PLATFORM_UNIX)
+    #if defined(PLATFORM_UNIX)
     fsync(fileno(f)); // ensure it's on disk before the rename
-    #elif defined(PLATFORM_MACOS)*/
+    #elif defined(PLATFORM_MACOS)
     fcntl(fileno(f), F_FULLFSYNC);
-    /*#endif*/
+    #endif
     fclose(f);
 
     rename(tmp_path, out_path); // atomic swap
