@@ -65,9 +65,10 @@ int main(int argc, char* argv[]) {
     nodelay(stdscr, TRUE);
     int ch;
     timeout(250);
+    printw("sys-monitor : press 'q' to quit\n");
 	
 
-    while ((ch = getch()) == ERR) {
+    while ((ch = getch()) != 'q') {
         if (sampler_run(&cpu0, interval) != 0) {printf("could not sample cpu\n"); continue;}
         if (sample_memory(&mem0) != 0) {printf("could not sample memory\n"); continue;}
 
@@ -76,8 +77,9 @@ int main(int argc, char* argv[]) {
         s.mem_total_mb = mem0.active + mem0.inactive + mem0.free + mem0.wired;
         getloadavg(s.loads, 3);
 
-        printw("cpu     = %.2f%%\nmemory  = %.2f%%\nload_1m = %.2f%%\n\n", s.cpu_pct, (double)s.mem_used_mb / (double)s.mem_total_mb, s.loads[0]);
-        move(0, 0);
+        printw("cpu      = %.2f%%\nmemory   = %.2f%%\nload_1m  = %.2f%%\nload_5m  = %.2f%%\nload_15m = %.2f%%\n\n",
+               s.cpu_pct, (double)s.mem_used_mb / (double)s.mem_total_mb, s.loads[0], s.loads[1], s.loads[2]);
+        move(1, 0);
         refresh();
         write_status(filepath, &s);
     }
