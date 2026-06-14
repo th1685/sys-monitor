@@ -104,9 +104,6 @@ int sample_memory(mem_sample_t* out) {
     char line[MAX_LINE_LENGTH];
     int i = 0;
 
-    out->free = 1000000;
-    out->active = 100000;
-    out->inactive = 600000;
     out->wired = 0; //unevictable
 
     while (fgets(line, MAX_LINE_LENGTH, f) && i < 8) {
