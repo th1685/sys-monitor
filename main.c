@@ -60,9 +60,9 @@ int main(int argc, char* argv[]) { //sysmon -f "/file/path/to/log" -v for ncurse
     
     char *homedir, *default_filepath;
     char filepath[128];
-    //if ((homedir = getenv("HOME")) == NULL) return -1;
+    if ((homedir = getenv("HOME")) == NULL) return -1;
     
-    default_filepath = "./monitor.json"; //strcat(homedir, "/monitor.json");
+    default_filepath = strcat(homedir, "/monitor.json");
     strcpy(filepath, default_filepath);
 
     int ncurses_output = 0;
