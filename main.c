@@ -37,7 +37,7 @@ typedef struct {
 } cpu_delta_t;
 
 typedef struct {
-    uint64_t free, active, inactive, wired;
+    uint64_t free, active, inactive, wired, compressed;
 } mem_sample_t;
 
 
@@ -75,11 +75,11 @@ int main(int argc, char* argv[]) {
         if (sample_memory(&mem0) != 0) {printf("could not sample memory\n"); continue;}
 
         s.cpu_pct = cpu_usage(&cpu0);
-        s.mem_used_mb = mem0.active;
-        s.mem_total_mb = mem0.active + mem0.inactive + mem0.free + mem0.wired;
+        s.mem_used_mb = mem0.active + mem0.wired;
+        s.mem_total_mb = mem0.active + mem0.inactive + mem0.free + mem0.wired + mem0.compressed;
         getloadavg(s.loads, 3);
 
-        double mem_used_pct = (double)s.mem_used_mb / (double)s.mem_total_mb;
+        double mem_used_pct = 100.0 * (double)s.mem_used_mb / (double)s.mem_total_mb;
 
         printw_status_line("cpu", s.cpu_pct, progress_bar(s.cpu_pct, progress_bar_width));
         printw_status_line("memory", mem_used_pct, progress_bar(mem_used_pct, progress_bar_width));
@@ -124,6 +124,7 @@ int sample_memory(mem_sample_t* out) {
     int i = 0;
 
     out->wired = 0; //unevictable
+    out->compressed = 0;
 
     while (fgets(line, MAX_LINE_LENGTH, f) && i < 8) {
         i++;
@@ -201,6 +202,7 @@ int sample_memory(mem_sample_t* out) {
     out->active = (uint64_t)vm.active_count * page_size;
     out->inactive = (uint64_t)vm.inactive_count * page_size;
     out->wired = (uint64_t)vm.wire_count * page_size;
+    out->compressed = (uint64_t)vm.compressor_page_count * page_size;
 
     return 0;
 }
