@@ -282,7 +282,7 @@ void printw_status_line(char* name, double stat, const char* bar) {
         attron(COLOR_PAIR(2));
     } else if (stat < 80.0 && stat >= 50.0) {
         attron(COLOR_PAIR(3));
-    } else if (stat < 40.0 && stat >= 0.0) {
+    } else if (stat < 50.0 && stat >= 0.0) {
         attron(COLOR_PAIR(4));
     } else {
         attron(COLOR_PAIR(5));
