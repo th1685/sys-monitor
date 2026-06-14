@@ -80,7 +80,7 @@ int sample_cpu(cpu_sample_t* out) {
     /*user, nice, system, idle, iowait, irq, softirq, steal, guest, guest_nice*/
     FILE *f = fopen("/proc/stat", "r");
     if (!f) return -1;
-    int MAX_LINE_LENGTH = 128;
+    const int MAX_LINE_LENGTH = 128;
     char line[MAX_LINE_LENGTH], core_name[32];
 
     fgets(line, MAX_LINE_LENGTH, f);
@@ -99,6 +99,13 @@ int sample_cpu(cpu_sample_t* out) {
 int sample_memory(mem_sample_t* out) {
     FILE *f = fopen("/proc/meminfo", "r");
     if (!f) return -1;
+    const int MAX_LINE_LENGTH = 128;
+    char line[MAX_LINE_LENGTH];
+
+    mem_sample_t->free = 1000000;
+    mem_sample_t->active = 100000;
+    mem_sample_t->inactive = 600000;
+    mem_sample_t->wired = 200000;
 
     return 0;
 }
