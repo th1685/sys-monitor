@@ -102,10 +102,10 @@ int sample_memory(mem_sample_t* out) {
     const int MAX_LINE_LENGTH = 128;
     char line[MAX_LINE_LENGTH];
 
-    mem_sample_t->free = 1000000;
-    mem_sample_t->active = 100000;
-    mem_sample_t->inactive = 600000;
-    mem_sample_t->wired = 200000;
+    out->free = 1000000;
+    out->active = 100000;
+    out->inactive = 600000;
+    out->wired = 200000;
 
     return 0;
 }
