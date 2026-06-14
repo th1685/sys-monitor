@@ -6,7 +6,7 @@
 #include <time.h>
 #include <errno.h>
 #include <inttypes.h>
-#include <curses.h>
+#include <ncurses.h>
 
 #if defined(__APPLE__) || defined(__MACH__)
     #define PLATFORM_MACOS
