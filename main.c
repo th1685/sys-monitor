@@ -9,6 +9,7 @@
 #include <string.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <sys/sysinfo.h>
 
 #if defined(__APPLE__) || defined(__MACH__)
     #define PLATFORM_MACOS
@@ -44,6 +45,7 @@ typedef struct {
 int sample_loop(snapshot* s, cpu_delta_t* cpu0, mem_sample_t* mem0, long interval);
 int sample_cpu(cpu_sample_t *out);   // impl differs per OS
 int sample_memory(mem_sample_t *out);
+long get_uptime();
 void ts_add_ms(struct timespec* out, long ms);
 int sampler_run(cpu_delta_t* d, long interval_ms);
 uint64_t safe_substitution(uint64_t new, uint64_t old);
@@ -95,7 +97,7 @@ int main(int argc, char* argv[]) { //sysmon -f "/file/path/to/log" -v for ncurse
 
     if (ncurses_output) { 
         init_curses();
-        printw("sys-monitor : press 'q' to quit\noutput: %s\n", filepath);
+        printw("sys-monitor : uptime %l : press 'q' to quit\noutput: %s\n", get_uptime(), filepath);
 
         while ((ch = getch()) != 'q') {
             move(2, 0);
@@ -245,6 +247,17 @@ int sample_memory(mem_sample_t* out) {
     return 0;
 }
 #endif
+
+
+long get_uptime() {
+    struct sysinfo s_info;
+    int error = sysinfo(&s_info);
+    if(error != 0)
+    {
+        printf("code error = %d\n", error);
+    }
+    return s_info.uptime;
+}
 
 
 void ts_add_ms(struct timespec* ts, long ms) {
