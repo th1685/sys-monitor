@@ -284,7 +284,7 @@ void printw_status_line(char* name, double stat, const char* bar) {
     printw("%8s = %6.2f%% [ ", name, stat);
     if (stat < 100.00 && stat >= 80.0) {
         attron(COLOR_PAIR(2));
-    } else if (stat < 80.0 && stat >= 40.0) {
+    } else if (stat < 80.0 && stat >= 50.0) {
         attron(COLOR_PAIR(3));
     } else if (stat < 40.0 && stat >= 0.0) {
         attron(COLOR_PAIR(4));
