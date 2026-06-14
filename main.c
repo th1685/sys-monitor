@@ -8,6 +8,7 @@
 #include <ncurses.h>
 #include <string.h>
 #include <fcntl.h>
+#include <unistd.h>
 
 #if defined(__APPLE__) || defined(__MACH__)
     #define PLATFORM_MACOS
@@ -15,7 +16,6 @@
     #include <mach/mach_host.h>
 #elif defined(unix) || defined(__unix__) || defined(__unix)
     #define PLATFORM_UNIX
-    #include <unistd.h>
 #elif defined(_WIN32) || defined(_WIN64) || defined(CYGWIN)
     #error "windows build not supported"
 #endif
@@ -41,6 +41,7 @@ typedef struct {
 } mem_sample_t;
 
 
+int sample_loop(snapshot* s, cpu_delta_t* cpu0, mem_sample_t* mem0, long interval);
 int sample_cpu(cpu_sample_t *out);   // impl differs per OS
 int sample_memory(mem_sample_t *out);
 void ts_add_ms(struct timespec* out, long ms);
@@ -54,49 +55,88 @@ void write_status(const char* out_path, snapshot* s);
 void init_curses(void);
 
 
-int main(int argc, char* argv[]) {
-    if (argc != 1) return -1;
+int main(int argc, char* argv[]) { //sysmon -f "/file/path/to/log" -v for ncurses output
+    if (argc > 3) { return -1; }
+
+    const char* default_filepath = "./monitor.json";
+    const char* filepath = default_filepath;
+
+    int ncurses_output = 0;
+    int opt;
+
+    while ((opt = getopt(argc, argv, "hvf:")) != -1) {
+        switch (opt) {
+            case 'h':
+                printf("-v: ncurses output\n"
+                       "-f: specify filepath\n");
+                return 0; 
+            case 'v':
+                ncurses_output = 1;
+                break;
+            case 'f':
+                filepath = optarg;
+                break;
+            default:
+                fprintf(stderr, "Usage: %s [-h] [-v] [-f file]\n", argv[0]);
+                return -1;
+        }
+    }
 
     cpu_delta_t cpu0 = {0};
     mem_sample_t mem0 = {0};
     snapshot s = {0};
-    char* filepath = "./monitor.json";
     long interval = 1000;
     int progress_bar_width = 50;
     int ch;
 
-    init_curses();
-    printw("sys-monitor : press 'q' to quit\n");
-	
+    if (ncurses_output) { 
+        init_curses();
+        printw("sys-monitor : press 'q' to quit\noutput: %s\n", filepath);
 
-    while ((ch = getch()) != 'q') {
-        move(1, 0);
-        if (sampler_run(&cpu0, interval) != 0) {printf("could not sample cpu\n"); continue;}
-        if (sample_memory(&mem0) != 0) {printf("could not sample memory\n"); continue;}
+        while ((ch = getch()) != 'q') {
+            move(2, 0);
 
-        s.cpu_pct = cpu_usage(&cpu0);
-        s.mem_used_b = mem0.active + mem0.wired;
+            if (sample_loop(&s, &cpu0, &mem0, interval) != 0) return -1;
 
-        #if defined(PLATFORM_MACOS)
-        s.mem_total_b = mem0.active + mem0.inactive + mem0.free + mem0.wired + mem0.compressed;
-        #elif defined(PLATFORM_UNIX)
-        s.mem_total_b = mem0.total;
-        #endif
-        
-        getloadavg(s.loads, 3);
+            double mem_used_pct = 100.0 * (double)s.mem_used_b / (double)s.mem_total_b;
 
-        double mem_used_pct = 100.0 * (double)s.mem_used_b / (double)s.mem_total_b;
+            printw_status_line("cpu", s.cpu_pct, progress_bar(s.cpu_pct, progress_bar_width));
+            printw_status_line("memory", mem_used_pct, progress_bar(mem_used_pct, progress_bar_width));
+            printw_status_line("load_1m", s.loads[0], progress_bar(s.loads[0], progress_bar_width));
+            printw_status_line("load_5m", s.loads[1], progress_bar(s.loads[1], progress_bar_width));
+            printw_status_line("load_15m", s.loads[2], progress_bar(s.loads[2], progress_bar_width));
+            refresh();
+            write_status(filepath, &s);
+        }
 
-        printw_status_line("cpu", s.cpu_pct, progress_bar(s.cpu_pct, progress_bar_width));
-        printw_status_line("memory", mem_used_pct, progress_bar(mem_used_pct, progress_bar_width));
-        printw_status_line("load_1m", s.loads[0], progress_bar(s.loads[0], progress_bar_width));
-        printw_status_line("load_5m", s.loads[1], progress_bar(s.loads[1], progress_bar_width));
-        printw_status_line("load_15m", s.loads[2], progress_bar(s.loads[2], progress_bar_width));
-        refresh();
-        write_status(filepath, &s);
+        endwin();			/* End curses mode		  */
+
+    } else {
+        while(1) {
+            if (sample_loop(&s, &cpu0, &mem0, interval) != 0) return -1;
+            write_status(filepath, &s);
+        }
     }
 
-    endwin();			/* End curses mode		  */
+    return 0;
+}
+
+
+int sample_loop(snapshot* s, cpu_delta_t* c, mem_sample_t* m, long interval) {
+    if (sampler_run(c, interval) != 0) {printf("could not sample cpu\n"); return -1;}
+    if (sample_memory(m) != 0) {printf("could not sample memory\n"); return -1;}
+
+    s->cpu_pct = cpu_usage(c);
+    s->mem_used_b = m->active + m->wired;
+
+    #if defined(PLATFORM_MACOS)
+    s->mem_total_b = m->active + m->inactive + m->free + m->wired + m->compressed;
+    #elif defined(PLATFORM_UNIX)
+    s->mem_total_b = mem0->total;
+    #endif
+    
+    getloadavg(s->loads, 3);
+
     return 0;
 }
 
