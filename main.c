@@ -49,7 +49,9 @@ uint64_t safe_substitution(uint64_t new, uint64_t old);
 cpu_delta_t cpu_delta(const cpu_sample_t* new, const cpu_sample_t* old);
 double cpu_usage(const cpu_delta_t* d);
 const char* progress_bar(double pct, int width);
+void printw_status_line(char* name, double stat, const char* bar);
 void write_status(const char* out_path, snapshot* s);
+void init_curses(void);
 
 
 int main(int argc, char* argv[]) {
@@ -61,17 +63,14 @@ int main(int argc, char* argv[]) {
     char* filepath = "./monitor.json";
     long interval = 1000;
     int progress_bar_width = 50;
-
-    initscr();			/* Start curses mode 		  */
-    curs_set(0); /*hide cursor*/
-    noecho();
-    nodelay(stdscr, TRUE);
     int ch;
-    timeout(250);
+
+    init_curses();
     printw("sys-monitor : press 'q' to quit\n");
 	
 
     while ((ch = getch()) != 'q') {
+        move(1, 0);
         if (sampler_run(&cpu0, interval) != 0) {printf("could not sample cpu\n"); continue;}
         if (sample_memory(&mem0) != 0) {printf("could not sample memory\n"); continue;}
 
@@ -82,12 +81,11 @@ int main(int argc, char* argv[]) {
 
         double mem_used_pct = (double)s.mem_used_mb / (double)s.mem_total_mb;
 
-        printw("cpu      = %6.2f%% %s\n", s.cpu_pct, progress_bar(s.cpu_pct, progress_bar_width));
-        printw("memory   = %6.2f%% %s\n", mem_used_pct, progress_bar(mem_used_pct, progress_bar_width));
-        printw("load_1m  = %6.2f%% %s\n", s.loads[0], progress_bar(s.loads[0], progress_bar_width));
-        printw("load_5m  = %6.2f%% %s\n", s.loads[1], progress_bar(s.loads[1], progress_bar_width));
-        printw("load_15m = %6.2f%% %s\n\n", s.loads[2], progress_bar(s.loads[2], progress_bar_width));
-        move(1, 0);
+        printw_status_line("cpu", s.cpu_pct, progress_bar(s.cpu_pct, progress_bar_width));
+        printw_status_line("memory", mem_used_pct, progress_bar(mem_used_pct, progress_bar_width));
+        printw_status_line("load_1m", s.loads[0], progress_bar(s.loads[0], progress_bar_width));
+        printw_status_line("load_5m", s.loads[1], progress_bar(s.loads[1], progress_bar_width));
+        printw_status_line("load_15m", s.loads[2], progress_bar(s.loads[2], progress_bar_width));
         refresh();
         write_status(filepath, &s);
     }
@@ -268,16 +266,31 @@ const char* progress_bar(double pct, int width) {
 
     int i = 0;
 
-    bar[i++] = '[';
+    //bar[i++] = '[';
 
     for (int j = 0; j < width; j++) {
         bar[i++] = (j < progress) ? '|' : ' ';
     }
 
-    bar[i++] = ']';
+    //bar[i++] = ']';
     bar[i] = '\0';
 
     return bar;
+}
+
+
+void printw_status_line(char* name, double stat, const char* bar) {
+    printw("%8s = %5.2f%% [", name, stat);
+    if (stat <= 40.0) {
+        attron(COLOR_PAIR(4));
+    } else if (stat <= 80.0) {
+        attron(COLOR_PAIR(3));
+    } else {
+        attron(COLOR_PAIR(2));
+    }
+    printw("%s", bar);
+    attron(COLOR_PAIR(1));
+    printw("]\n");
 }
 
 
@@ -314,4 +327,22 @@ void write_status(const char* out_path, snapshot* s) {
     fclose(f);
 
     rename(tmp_path, out_path); // atomic swap
+}
+
+void init_curses(void) {
+    initscr();			/* Start curses mode 		  */
+    curs_set(0); /*hide cursor*/
+    noecho();
+    nodelay(stdscr, TRUE);
+    timeout(250);
+
+    if (has_colors()) {
+        start_color();
+        use_default_colors();
+
+        init_pair(1, -1, -1);
+        init_pair(2, COLOR_RED, -1);
+        init_pair(3, COLOR_YELLOW, -1);
+        init_pair(4, COLOR_GREEN, -1);
+    }
 }
