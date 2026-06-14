@@ -59,7 +59,15 @@ int main(int argc, char* argv[]) {
     char* filepath = "./monitor.json";
     long interval = 1000;
 
-    while (true) {
+    initscr();			/* Start curses mode 		  */
+    curs_set(0); /*hide cursor*/
+    noecho();
+    nodelay(stdscr, TRUE);
+    int ch;
+    timeout(250);
+	
+
+    while ((ch = getch()) == ERR) {
         if (sampler_run(&cpu0, interval) != 0) {printf("could not sample cpu\n"); continue;}
         if (sample_memory(&mem0) != 0) {printf("could not sample memory\n"); continue;}
 
@@ -68,10 +76,13 @@ int main(int argc, char* argv[]) {
         s.mem_total_mb = mem0.active + mem0.inactive + mem0.free + mem0.wired;
         getloadavg(s.loads, 3);
 
-        printf("cpu     = %.2f%%\nmemory  = %.2f%%\nload_1m = %.2f%%\n\n", s.cpu_pct, (double)s.mem_used_mb / (double)s.mem_total_mb, s.loads[0]);
+        printw("cpu     = %.2f%%\nmemory  = %.2f%%\nload_1m = %.2f%%\n\n", s.cpu_pct, (double)s.mem_used_mb / (double)s.mem_total_mb, s.loads[0]);
+        move(0, 0);
+        refresh();
         write_status(filepath, &s);
     }
 
+    endwin();			/* End curses mode		  */
     return 0;
 }
 
