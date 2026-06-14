@@ -57,8 +57,9 @@ void init_curses(void);
 
 int main(int argc, char* argv[]) { //sysmon -f "/file/path/to/log" -v for ncurses output
     if (argc > 4) { fprintf(stderr, "too many arguments.\nUsage: %s [-h] [-v] [-f file]\n", argv[0]); return -1; }
-
-    char *homedir, *default_filepath, *filepath;
+    
+    char *homedir, *default_filepath;
+    char filepath[128];
     //if ((homedir = getenv("HOME")) == NULL) return -1;
     
     default_filepath = "./monitor.json"; //strcat(homedir, "/monitor.json");
@@ -77,7 +78,7 @@ int main(int argc, char* argv[]) { //sysmon -f "/file/path/to/log" -v for ncurse
                 ncurses_output = 1;
                 break;
             case 'f':
-                filepath = optarg;
+                strcpy(filepath, optarg);
                 break;
             default:
                 fprintf(stderr, "Usage: %s [-h] [-v] [-f file]\n", argv[0]);
