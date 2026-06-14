@@ -372,7 +372,7 @@ void write_status(const char* out_path, snapshot* s) {
         "  \"load_5m\": %.2f,\n"
         "  \"load_15m\": %.2f,\n"
         "  \"timestamp\": %ld,\n"
-        "  \"uptime\": %2lds:%2ldm:%ldh\n"
+        "  \"uptime\": "%2lds-%2ldm:%ldh"\n"
         "}\n",
         s->cpu_pct, s->mem_used_b, s->mem_total_b,
         100.0 * (double)s->mem_used_b / (double)s->mem_total_b,
