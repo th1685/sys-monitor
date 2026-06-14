@@ -5,14 +5,16 @@
 #include <string.h>
 #include <time.h>
 #include <errno.h>
+#include <inttypes.h>
+#include <ncurses.h>
 
 #if defined(__APPLE__) || defined(__MACH__)
     #define PLATFORM_MACOS
     #include <mach/mach.h>
     #include <mach/mach_host.h>
-    #include <inttypes.h>
 #elif defined(unix) || defined(__unix__) || defined(__unix)
     #define PLATFORM_UNIX
+    #include <unistd.h>
 #elif defined(_WIN32) || defined(_WIN64) || defined(CYGWIN)
     #error "windows build not supported"
 #endif
@@ -26,11 +28,11 @@ typedef struct {
 } snapshot;
 
 typedef struct {
-    uint64_t user, system, idle, nice;  // per logical CPU, or aggregate
+    uint64_t user, nice, system, idle;  // per logical CPU, or aggregate
 } cpu_sample_t;
 
 typedef struct {
-    uint64_t user_d, system_d, idle_d, nice_d, total_d, active_d;
+    uint64_t user_d, nice_d, system_d, idle_d, total_d, active_d;
 } cpu_delta_t;
 
 typedef struct {
@@ -38,12 +40,11 @@ typedef struct {
 } mem_sample_t;
 
 
-void sample_cpu(cpu_sample_t *out);   // impl differs per OS
-void sample_memory(mem_sample_t *out);
-static void ts_add_ms(struct timespec* out, long ms);
-static int sleep_until(const struct timespec *deadline);
-void sampler_run(cpu_delta_t* d, long interval_ms);
-static uint64_t safe_substitution(uint64_t new, uint64_t old);
+int sample_cpu(cpu_sample_t *out);   // impl differs per OS
+int sample_memory(mem_sample_t *out);
+void ts_add_ms(struct timespec* out, long ms);
+int sampler_run(cpu_delta_t* d, long interval_ms);
+uint64_t safe_substitution(uint64_t new, uint64_t old);
 cpu_delta_t cpu_delta(const cpu_sample_t* new, const cpu_sample_t* old);
 double cpu_usage(const cpu_delta_t* d);
 void write_status(const char* out_path, snapshot* s);
@@ -59,15 +60,15 @@ int main(int argc, char* argv[]) {
     long interval = 1000;
 
     while (true) {
-        sampler_run(&cpu0, interval);
-        sample_memory(&mem0);
+        if (sampler_run(&cpu0, interval) != 0) {printf("could not sample cpu\n"); continue;}
+        if (sample_memory(&mem0) != 0) {printf("could not sample memory\n"); continue;}
 
         s.cpu_pct = cpu_usage(&cpu0);
         s.mem_used_mb = mem0.active;
         s.mem_total_mb = mem0.active + mem0.inactive + mem0.free + mem0.wired;
         getloadavg(s.loads, 3);
 
-        printf("cpu  = %.2f%%\nmem  = %.2f%%\nload = %.2f%%\n\n", s.cpu_pct, (double)s.mem_used_mb / (double)s.mem_total_mb, s.loads[0]);
+        printf("cpu     = %.2f%%\nmemory  = %.2f%%\nload_1m = %.2f%%\n\n", s.cpu_pct, (double)s.mem_used_mb / (double)s.mem_total_mb, s.loads[0]);
         write_status(filepath, &s);
     }
 
@@ -76,8 +77,61 @@ int main(int argc, char* argv[]) {
 
 
 #if defined(PLATFORM_UNIX)
+int sample_cpu(cpu_sample_t* out) {
+    /*user, nice, system, idle, iowait, irq, softirq, steal, guest, guest_nice*/
+    FILE *f = fopen("/proc/stat", "r");
+    if (!f) return -1;
+    const int MAX_LINE_LENGTH = 128;
+    char line[MAX_LINE_LENGTH], core_name[32];
+
+    fgets(line, MAX_LINE_LENGTH, f);
+
+    if (sscanf(line, "%15s %" PRIu64 " %" PRIu64 " %" PRIu64 " %" PRIu64, 
+                core_name, &out->user, &out->nice, &out->system, &out->idle) != 5) {
+        printf("could not parse /proc/stat\n");
+        return -1;
+    }
+
+    fclose(f);
+    return 0;
+}
+
+
+int sample_memory(mem_sample_t* out) {
+    FILE *f = fopen("/proc/meminfo", "r");
+    if (!f) return -1;
+    const int MAX_LINE_LENGTH = 128;
+    char line[MAX_LINE_LENGTH];
+    int i = 0;
+
+    out->wired = 0; //unevictable
+
+    while (fgets(line, MAX_LINE_LENGTH, f) && i < 8) {
+        i++;
+        switch (i) {
+            case 2:
+                sscanf(line, "MemFree: %" PRIu64 " kB", &out->free);
+                break;
+
+            case 7:
+                sscanf(line, "Active: %" PRIu64 " kB", &out->active);
+                break;
+            
+            case 8:
+                sscanf(line, "Inactive: %" PRIu64 " kB", &out->inactive);
+                break;
+            default:
+                continue;
+        }
+    }
+
+    fclose(f);
+    return 0;
+}
+
+
 #elif defined(PLATFORM_MACOS)
-void sample_cpu(cpu_sample_t *out) {
+int sample_cpu(cpu_sample_t *out) {
     host_cpu_load_info_data_t info;
     mach_msg_type_number_t cpu_count = HOST_CPU_LOAD_INFO_COUNT;
 
@@ -89,17 +143,19 @@ void sample_cpu(cpu_sample_t *out) {
     if (cpu_kr != KERN_SUCCESS) {
         fprintf(stderr, "host_statistics64(HOST_CPU_LOAD_INFO) failed: %s\n",
                 mach_error_string(cpu_kr));
-        return;
+        return -1;
     }
     
     out->user = (uint64_t)info.cpu_ticks[CPU_STATE_USER];
+    out->nice = (uint64_t)info.cpu_ticks[CPU_STATE_NICE];
     out->system = (uint64_t)info.cpu_ticks[CPU_STATE_SYSTEM];
     out->idle = (uint64_t)info.cpu_ticks[CPU_STATE_IDLE];
-    out->nice = (uint64_t)info.cpu_ticks[CPU_STATE_NICE];
+
+    return 0;
 }
 
 
-void sample_memory(mem_sample_t* out) {
+int sample_memory(mem_sample_t* out) {
     vm_statistics64_data_t vm;
     mach_msg_type_number_t vm_count = HOST_VM_INFO64_COUNT;
 
@@ -111,7 +167,7 @@ void sample_memory(mem_sample_t* out) {
     if (vm_kr != KERN_SUCCESS) {
         fprintf(stderr, "host_statistics64(HOST_VM_INFO64) failed: %s\n",
                 mach_error_string(vm_kr));
-        return;
+        return -1;
     }
 
     mach_port_t host = mach_host_self();
@@ -119,67 +175,43 @@ void sample_memory(mem_sample_t* out) {
     vm_kr = host_page_size(host, &page_size);
     if (vm_kr != KERN_SUCCESS) {
         fprintf(stderr, "host_page_size failed: %s\n", mach_error_string(vm_kr));
-        return;
+        return -1;
     }
 
     out->free = (uint64_t)vm.free_count * page_size;
     out->active = (uint64_t)vm.active_count * page_size;
     out->inactive = (uint64_t)vm.inactive_count * page_size;
     out->wired = (uint64_t)vm.wire_count * page_size;
+
+    return 0;
 }
 #endif
 
 
-static void ts_add_ms(struct timespec* ts, long ms) {
+void ts_add_ms(struct timespec* ts, long ms) {
     ts->tv_nsec += ms * 1000000L;
     ts->tv_sec  += ts->tv_nsec / 1000000000L;
     ts->tv_nsec %= 1000000000L;
 }
 
 
-static int sleep_until(const struct timespec *deadline) {
-    for (;;) {
-        struct timespec now, remaining;
-        clock_gettime(CLOCK_MONOTONIC, &now);
-
-        remaining.tv_sec  = deadline->tv_sec  - now.tv_sec;
-        remaining.tv_nsec = deadline->tv_nsec - now.tv_nsec;
-        if (remaining.tv_nsec < 0) {
-            remaining.tv_sec--;
-            remaining.tv_nsec += 1000000000L;
-        }
-
-        if (remaining.tv_sec < 0)
-            return 0;  /* deadline already passed, continue immediately */
-
-        if (nanosleep(&remaining, NULL) == 0)
-            return 0;
-
-        if (errno != EINTR)
-            return -1; /* real error */
-
-        /* EINTR: loop and recompute from the absolute deadline,
-           rather than trusting the `rem` output of nanosleep. */
-    }
-}
-
-
-void sampler_run(cpu_delta_t* d, long interval_ms) {
+int sampler_run(cpu_delta_t* d, long interval_ms) {
     cpu_sample_t prev, now;
     struct timespec ts = {
         .tv_sec  = interval_ms / 1000,
         .tv_nsec = (interval_ms % 1000) * 1000000L,
     };
 
-    sample_cpu(&prev);
+    if (sample_cpu(&prev) != 0) return -1;
     nanosleep(&ts, NULL);
-    sample_cpu(&now);
+    if (sample_cpu(&now) != 0) return -1;
 
     *d = cpu_delta(&now, &prev);
+    return 0;
 }
 
 
-static uint64_t safe_substitution(uint64_t new, uint64_t old) {
+uint64_t safe_substitution(uint64_t new, uint64_t old) {
     return (new >= old) ? new - old : 0;
 }
 
@@ -187,9 +219,9 @@ static uint64_t safe_substitution(uint64_t new, uint64_t old) {
 cpu_delta_t cpu_delta(const cpu_sample_t* new, const cpu_sample_t* old) {
     cpu_delta_t d = {
         .user_d   = safe_substitution(new->user, old->user),
+        .nice_d   = safe_substitution(new->nice, old->nice),
         .system_d = safe_substitution(new->system, old->system),
         .idle_d   = safe_substitution(new->idle, old->idle),
-        .nice_d   = safe_substitution(new->nice, old->nice),
     };
 
     d.total_d = d.user_d + d.system_d + d.idle_d + d.nice_d;
