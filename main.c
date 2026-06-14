@@ -37,7 +37,7 @@ typedef struct {
 } cpu_delta_t;
 
 typedef struct {
-    uint64_t free, active, inactive, wired, compressed;
+    uint64_t total, free, active, inactive, wired, compressed;
 } mem_sample_t;
 
 
@@ -80,7 +80,7 @@ int main(int argc, char* argv[]) {
         #if defined(PLATFORM_MACOS)
         s.mem_total_mb = mem0.active + mem0.inactive + mem0.free + mem0.wired + mem0.compressed;
         #elif defined(PLATFORM_UNIX)
-        s.mem_total_mb = mem0.wired; /*wired used for total in UNIX case*/
+        s.mem_total_mb = mem0.total;
         #endif
         
         getloadavg(s.loads, 3);
@@ -133,7 +133,7 @@ int sample_memory(mem_sample_t* out) {
 
     while (fgets(line, MAX_LINE_LENGTH, f) && i < 8) {
         i++;
-        if      (sscanf(line, "MemTotal: %"  PRIu64 " kB", &out->wired)    == 1) {} /*using wired because unused UNIX*/
+        if      (sscanf(line, "MemTotal: %"  PRIu64 " kB", &out->total)    == 1) {}
         else if (sscanf(line, "MemFree: %"   PRIu64 " kB", &out->free)     == 1) {}
         else if (sscanf(line, "Active: %"    PRIu64 " kB", &out->active)   == 1) {}
         else if (sscanf(line, "Inactive: %"  PRIu64 " kB", &out->inactive) == 1) {}
@@ -192,6 +192,7 @@ int sample_memory(mem_sample_t* out) {
         return -1;
     }
 
+    out->total = 0.0;
     out->free = (uint64_t)vm.free_count * page_size;
     out->active = (uint64_t)vm.active_count * page_size;
     out->inactive = (uint64_t)vm.inactive_count * page_size;
