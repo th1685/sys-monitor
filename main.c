@@ -280,17 +280,20 @@ const char* progress_bar(double pct, int width) {
 
 
 void printw_status_line(char* name, double stat, const char* bar) {
-    printw("%8s = %5.2f%% [", name, stat);
-    if (stat <= 40.0) {
-        attron(COLOR_PAIR(4));
-    } else if (stat <= 80.0) {
-        attron(COLOR_PAIR(3));
-    } else {
+    attron(COLOR_PAIR(1));
+    printw("%8s = %6.2f%% [ ", name, stat);
+    if (stat < 100.00 && stat >= 80.0) {
         attron(COLOR_PAIR(2));
+    } else if (stat < 80.0 && stat >= 40.0) {
+        attron(COLOR_PAIR(3));
+    } else if (stat < 40.0 && stat >= 0.0) {
+        attron(COLOR_PAIR(4));
+    } else {
+        attron(COLOR_PAIR(5));
     }
     printw("%s", bar);
     attron(COLOR_PAIR(1));
-    printw("]\n");
+    printw(" ]\n");
 }
 
 
@@ -340,9 +343,12 @@ void init_curses(void) {
         start_color();
         use_default_colors();
 
+        init_color(COLOR_YELLOW, 1000, 600, 0);
+
         init_pair(1, -1, -1);
         init_pair(2, COLOR_RED, -1);
         init_pair(3, COLOR_YELLOW, -1);
         init_pair(4, COLOR_GREEN, -1);
+        init_pair(5, COLOR_BLUE, -1);
     }
 }
