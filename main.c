@@ -343,7 +343,7 @@ void init_curses(void) {
         start_color();
         use_default_colors();
 
-        init_color(COLOR_YELLOW, 1000, 600, 0);
+        init_color(COLOR_YELLOW, 1000, 750, 0);
 
         init_pair(1, -1, -1);
         init_pair(2, COLOR_RED, -1);
