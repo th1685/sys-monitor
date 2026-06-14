@@ -68,8 +68,6 @@ int main(int argc, char* argv[]) {
         s.mem_total_mb = mem0.active + mem0.inactive + mem0.free + mem0.wired;
         getloadavg(s.loads, 3);
 
-        printf("mem_free = %llu\nmem_active = %llu\nmem_inactive = %llu\nmem_wired = %llu\n", mem0.free, mem0.active, mem0.inactive, mem0.wired);
-
         printf("cpu     = %.2f%%\nmemory  = %.2f%%\nload_1m = %.2f%%\n\n", s.cpu_pct, (double)s.mem_used_mb / (double)s.mem_total_mb, s.loads[0]);
         write_status(filepath, &s);
     }
