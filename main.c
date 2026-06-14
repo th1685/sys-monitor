@@ -97,11 +97,12 @@ int main(int argc, char* argv[]) { //sysmon -f "/file/path/to/log" -v for ncurse
 
     if (ncurses_output) { 
         init_curses();
-        printw("sys-monitor : uptime %ld : press 'q' to quit\noutput: %s\n", get_uptime(), filepath);
+        printw("sys-monitor : uptime %2lds:%2ldm:%ldh press 'q' to quit\noutput: %s\n",
+               get_uptime()%60, (get_uptime()%3600) / 60, get_uptime() / 3600, filepath);
 
         while ((ch = getch()) != 'q') {
             move(0, 21);
-            printw("%ld", get_uptime());
+            printw("%2lds:%2ldm:%ldh", get_uptime()%60, (get_uptime()%3600) / 60, get_uptime() / 3600);
             move(2, 0);
 
             if (sample_loop(&s, &cpu0, &mem0, interval) != 0) return -1;
