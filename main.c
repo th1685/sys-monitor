@@ -107,11 +107,12 @@ int sample_memory(mem_sample_t* out) {
     out->free = 1000000;
     out->active = 100000;
     out->inactive = 600000;
-    out->wired = 200000;
+    out->wired = 0; //unevictable
 
-    while (fgets(line, MAX_LINE_LENGTH, f) && i < 16) {
-        i++;
+    while (fgets(line, MAX_LINE_LENGTH, f) && i < 8) {
+        i++; if (i != 2 || i != 7 || i != 8) continue;
         printf("%3d : %s", i, line);
+        sscanf(line, "%" PRIu64, &out->free);
     }
 
     fclose(f);
