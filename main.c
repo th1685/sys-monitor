@@ -113,17 +113,17 @@ int sample_memory(mem_sample_t* out) {
         switch (i) {
             case 2:
                 printf("%3d : %s", i, line);
-                sscanf(line, "%" PRIu64, &out->free);
+                sscanf(line, "MemFree: %" PRIu64 " kB", &out->free);
                 break;
 
             case 7:
                 printf("%3d : %s", i, line);
-                sscanf(line, "%" PRIu64, &out->active);
+                sscanf(line, "Active: %" PRIu64 " kB", &out->active);
                 break;
             
             case 8:
                 printf("%3d : %s", i, line);
-                sscanf(line, "%" PRIu64, &out->inactive);
+                sscanf(line, "Inactive: %" PRIu64 " kB", &out->inactive);
                 break;
             default:
                 continue;
