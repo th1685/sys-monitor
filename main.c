@@ -132,7 +132,7 @@ int sample_loop(snapshot* s, cpu_delta_t* c, mem_sample_t* m, long interval) {
     #if defined(PLATFORM_MACOS)
     s->mem_total_b = m->active + m->inactive + m->free + m->wired + m->compressed;
     #elif defined(PLATFORM_UNIX)
-    s->mem_total_b = mem0->total;
+    s->mem_total_b = m->total;
     #endif
     
     getloadavg(s->loads, 3);
