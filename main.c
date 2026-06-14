@@ -131,8 +131,7 @@ int sample_memory(mem_sample_t* out) {
 
     out->compressed = 0;
 
-    while (fgets(line, MAX_LINE_LENGTH, f) && i < 8) {
-        i++;
+    while (fgets(line, MAX_LINE_LENGTH, f)) {
         if      (sscanf(line, "MemTotal: %"  PRIu64 " kB", &out->total)    == 1) {}
         else if (sscanf(line, "MemFree: %"   PRIu64 " kB", &out->free)     == 1) {}
         else if (sscanf(line, "Active: %"    PRIu64 " kB", &out->active)   == 1) {}
@@ -192,7 +191,7 @@ int sample_memory(mem_sample_t* out) {
         return -1;
     }
 
-    out->total = 0.0;
+    out->total = 0;
     out->free = (uint64_t)vm.free_count * page_size;
     out->active = (uint64_t)vm.active_count * page_size;
     out->inactive = (uint64_t)vm.inactive_count * page_size;
@@ -306,15 +305,16 @@ void write_status(const char* out_path, snapshot* s) {
     fprintf(f,
         "{\n"
         "  \"cpu_pct\": %.2f,\n"
-        "  \"mem_used_mb\": %lu,\n"
-        "  \"mem_total_mb\": %lu,\n"
+        "  \"mem_used_kb\": %lu,\n"
+        "  \"mem_total_kb\": %lu,\n"
         "  \"mem_used_pct\": %.2f,\n"
         "  \"load_1m\": %.2f,\n"
         "  \"load_5m\": %.2f,\n"
         "  \"load_15m\": %.2f,\n"
         "  \"timestamp\": %ld\n"
         "}\n",
-        s->cpu_pct, s->mem_used_mb, s->mem_total_mb, (double)s->mem_used_mb / (double)s->mem_total_mb,
+        s->cpu_pct, s->mem_used_mb, s->mem_total_mb,
+        100.0 * (double)s->mem_used_mb / (double)s->mem_total_mb,
         s->loads[0], s->loads[1], s->loads[2], (long)time(NULL)
     );
 
