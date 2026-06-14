@@ -56,10 +56,13 @@ void init_curses(void);
 
 
 int main(int argc, char* argv[]) { //sysmon -f "/file/path/to/log" -v for ncurses output
-    if (argc > 3) { return -1; }
+    if (argc > 4) { fprintf(stderr, "too many arguments.\nUsage: %s [-h] [-v] [-f file]\n", argv[0]); return -1; }
 
-    const char* default_filepath = "./monitor.json";
-    const char* filepath = default_filepath;
+    char *homedir, *default_filepath, *filepath;
+    if ((homedir = getenv("HOME")) == NULL) return -1;
+    
+    default_filepath = strcat(homedir, "/monitor.json");
+    strcpy(filepath, default_filepath);
 
     int ncurses_output = 0;
     int opt;
@@ -67,9 +70,9 @@ int main(int argc, char* argv[]) { //sysmon -f "/file/path/to/log" -v for ncurse
     while ((opt = getopt(argc, argv, "hvf:")) != -1) {
         switch (opt) {
             case 'h':
-                printf("-v: ncurses output\n"
+                fprintf(stdout, "-v: ncurses output\n"
                        "-f: specify filepath\n");
-                return 0; 
+                return 0;
             case 'v':
                 ncurses_output = 1;
                 break;
