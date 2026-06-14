@@ -1,4 +1,3 @@
-#include <fcntl.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -7,6 +6,8 @@
 #include <errno.h>
 #include <inttypes.h>
 #include <ncurses.h>
+#include <string.h>
+#include <fcntl.h>
 
 #if defined(__APPLE__) || defined(__MACH__)
     #define PLATFORM_MACOS
@@ -47,6 +48,7 @@ int sampler_run(cpu_delta_t* d, long interval_ms);
 uint64_t safe_substitution(uint64_t new, uint64_t old);
 cpu_delta_t cpu_delta(const cpu_sample_t* new, const cpu_sample_t* old);
 double cpu_usage(const cpu_delta_t* d);
+const char* progress_bar(double pct, int width);
 void write_status(const char* out_path, snapshot* s);
 
 
@@ -58,6 +60,7 @@ int main(int argc, char* argv[]) {
     snapshot s = {0};
     char* filepath = "./monitor.json";
     long interval = 1000;
+    int progress_bar_width = 50;
 
     initscr();			/* Start curses mode 		  */
     curs_set(0); /*hide cursor*/
@@ -77,8 +80,13 @@ int main(int argc, char* argv[]) {
         s.mem_total_mb = mem0.active + mem0.inactive + mem0.free + mem0.wired;
         getloadavg(s.loads, 3);
 
-        printw("cpu      = %.2f%%\nmemory   = %.2f%%\nload_1m  = %.2f%%\nload_5m  = %.2f%%\nload_15m = %.2f%%\n\n",
-               s.cpu_pct, (double)s.mem_used_mb / (double)s.mem_total_mb, s.loads[0], s.loads[1], s.loads[2]);
+        double mem_used_pct = (double)s.mem_used_mb / (double)s.mem_total_mb;
+
+        printw("cpu      = %6.2f%% %s\n", s.cpu_pct, progress_bar(s.cpu_pct, progress_bar_width));
+        printw("memory   = %6.2f%% %s\n", mem_used_pct, progress_bar(mem_used_pct, progress_bar_width));
+        printw("load_1m  = %6.2f%% %s\n", s.loads[0], progress_bar(s.loads[0], progress_bar_width));
+        printw("load_5m  = %6.2f%% %s\n", s.loads[1], progress_bar(s.loads[1], progress_bar_width));
+        printw("load_15m = %6.2f%% %s\n\n", s.loads[2], progress_bar(s.loads[2], progress_bar_width));
         move(1, 0);
         refresh();
         write_status(filepath, &s);
@@ -246,6 +254,30 @@ cpu_delta_t cpu_delta(const cpu_sample_t* new, const cpu_sample_t* old) {
 
 double cpu_usage(const cpu_delta_t* d) {
     return d->total_d ? 100.00 * (double)d->active_d / (double)d->total_d : 0.0;
+}
+
+
+const char* progress_bar(double pct, int width) {
+    static char bar[1024];
+
+    int progress = (int)(pct * width / 100.0);
+
+    if (width < 0) width = 0;
+    if (progress < 0) progress = 0;
+    if (progress > width) progress = width;
+
+    int i = 0;
+
+    bar[i++] = '[';
+
+    for (int j = 0; j < width; j++) {
+        bar[i++] = (j < progress) ? '|' : ' ';
+    }
+
+    bar[i++] = ']';
+    bar[i] = '\0';
+
+    return bar;
 }
 
 
