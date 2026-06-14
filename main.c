@@ -59,9 +59,9 @@ int main(int argc, char* argv[]) { //sysmon -f "/file/path/to/log" -v for ncurse
     if (argc > 4) { fprintf(stderr, "too many arguments.\nUsage: %s [-h] [-v] [-f file]\n", argv[0]); return -1; }
 
     char *homedir, *default_filepath, *filepath;
-    if ((homedir = getenv("HOME")) == NULL) return -1;
+    //if ((homedir = getenv("HOME")) == NULL) return -1;
     
-    default_filepath = strcat(homedir, "/monitor.json");
+    default_filepath = strcat(".", "/monitor.json");
     strcpy(filepath, default_filepath);
 
     int ncurses_output = 0;
