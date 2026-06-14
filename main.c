@@ -100,6 +100,8 @@ int main(int argc, char* argv[]) { //sysmon -f "/file/path/to/log" -v for ncurse
         printw("sys-monitor : uptime %ld : press 'q' to quit\noutput: %s\n", get_uptime(), filepath);
 
         while ((ch = getch()) != 'q') {
+            move(0, 21);
+            printw("%ld", get_uptime());
             move(2, 0);
 
             if (sample_loop(&s, &cpu0, &mem0, interval) != 0) return -1;
