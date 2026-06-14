@@ -41,7 +41,7 @@ typedef struct {
 int sample_cpu(cpu_sample_t *out);   // impl differs per OS
 int sample_memory(mem_sample_t *out);
 void ts_add_ms(struct timespec* out, long ms);
-void sampler_run(cpu_delta_t* d, long interval_ms);
+int sampler_run(cpu_delta_t* d, long interval_ms);
 uint64_t safe_substitution(uint64_t new, uint64_t old);
 cpu_delta_t cpu_delta(const cpu_sample_t* new, const cpu_sample_t* old);
 double cpu_usage(const cpu_delta_t* d);
@@ -58,8 +58,8 @@ int main(int argc, char* argv[]) {
     long interval = 1000;
 
     while (true) {
-        sampler_run(&cpu0, interval);
-        sample_memory(&mem0);
+        if (sampler_run(&cpu0, interval) != 0) {printf("could not sample cpu\n"); continue;}
+        if (sample_memory(&mem0) != 0) {printf("could not sample memory\n"); continue;}
 
         s.cpu_pct = cpu_usage(&cpu0);
         s.mem_used_mb = mem0.active;
@@ -95,10 +95,12 @@ int sample_cpu(cpu_sample_t* out) {
 }
 
 
-void sample_memory(mem_sample_t* out) {
+int sample_memory(mem_sample_t* out) {
     FILE *f = fopen("/proc/meminfo", "r");
-    if (!f) return;
+    if (!f) return -1;
 }
+
+
 #elif defined(PLATFORM_MACOS)
 int sample_cpu(cpu_sample_t *out) {
     host_cpu_load_info_data_t info;
@@ -164,18 +166,19 @@ void ts_add_ms(struct timespec* ts, long ms) {
 }
 
 
-void sampler_run(cpu_delta_t* d, long interval_ms) {
+int sampler_run(cpu_delta_t* d, long interval_ms) {
     cpu_sample_t prev, now;
     struct timespec ts = {
         .tv_sec  = interval_ms / 1000,
         .tv_nsec = (interval_ms % 1000) * 1000000L,
     };
 
-    sample_cpu(&prev);
+    if (sample_cpu(&prev) != 0) return -1;
     nanosleep(&ts, NULL);
-    sample_cpu(&now);
+    if (sample_cpu(&now) != 0) return -1;
 
     *d = cpu_delta(&now, &prev);
+    return 0;
 }
 
 
