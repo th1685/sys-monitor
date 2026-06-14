@@ -23,8 +23,8 @@
 
 typedef struct {
     double cpu_pct;
-    unsigned long mem_used_mb;
-    unsigned long mem_total_mb;
+    unsigned long mem_used_b;
+    unsigned long mem_total_b;
     double loads[3];
 } snapshot;
 
@@ -75,17 +75,17 @@ int main(int argc, char* argv[]) {
         if (sample_memory(&mem0) != 0) {printf("could not sample memory\n"); continue;}
 
         s.cpu_pct = cpu_usage(&cpu0);
-        s.mem_used_mb = mem0.active + mem0.wired;
+        s.mem_used_b = mem0.active + mem0.wired;
 
         #if defined(PLATFORM_MACOS)
-        s.mem_total_mb = mem0.active + mem0.inactive + mem0.free + mem0.wired + mem0.compressed;
+        s.mem_total_b = mem0.active + mem0.inactive + mem0.free + mem0.wired + mem0.compressed;
         #elif defined(PLATFORM_UNIX)
-        s.mem_total_mb = mem0.total;
+        s.mem_total_b = mem0.total;
         #endif
         
         getloadavg(s.loads, 3);
 
-        double mem_used_pct = 100.0 * (double)s.mem_used_mb / (double)s.mem_total_mb;
+        double mem_used_pct = 100.0 * (double)s.mem_used_b / (double)s.mem_total_b;
 
         printw_status_line("cpu", s.cpu_pct, progress_bar(s.cpu_pct, progress_bar_width));
         printw_status_line("memory", mem_used_pct, progress_bar(mem_used_pct, progress_bar_width));
@@ -305,16 +305,16 @@ void write_status(const char* out_path, snapshot* s) {
     fprintf(f,
         "{\n"
         "  \"cpu_pct\": %.2f,\n"
-        "  \"mem_used_kb\": %lu,\n"
-        "  \"mem_total_kb\": %lu,\n"
+        "  \"mem_used_b\": %lu,\n"
+        "  \"mem_total_b\": %lu,\n"
         "  \"mem_used_pct\": %.2f,\n"
         "  \"load_1m\": %.2f,\n"
         "  \"load_5m\": %.2f,\n"
         "  \"load_15m\": %.2f,\n"
         "  \"timestamp\": %ld\n"
         "}\n",
-        s->cpu_pct, s->mem_used_mb, s->mem_total_mb,
-        100.0 * (double)s->mem_used_mb / (double)s->mem_total_mb,
+        s->cpu_pct, s->mem_used_b, s->mem_total_b,
+        100.0 * (double)s->mem_used_b / (double)s->mem_total_b,
         s->loads[0], s->loads[1], s->loads[2], (long)time(NULL)
     );
 
