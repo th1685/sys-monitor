@@ -234,11 +234,11 @@ void write_status(const char* out_path, snapshot* s) {
     );
 
     fflush(f);
-    #if defined(PLATFORM_UNIX)
+    /*#if defined(PLATFORM_UNIX)
     fsync(fileno(f)); // ensure it's on disk before the rename
-    #elif defined(PLATFORM_MACOS)
+    #elif defined(PLATFORM_MACOS)*/
     fcntl(fileno(f), F_FULLFSYNC);
-    #endif
+    /*#endif*/
     fclose(f);
 
     rename(tmp_path, out_path); // atomic swap
