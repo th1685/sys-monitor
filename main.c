@@ -47,6 +47,7 @@ int sample_loop(snapshot* s, cpu_delta_t* cpu0, mem_sample_t* mem0, long interva
 int sample_cpu(cpu_sample_t *out);   // impl differs per OS
 int sample_memory(mem_sample_t *out);
 long get_uptime();
+char* uptime_to_datetime(long uptime);
 void ts_add_ms(struct timespec* out, long ms);
 int sampler_run(cpu_delta_t* d, long interval_ms);
 uint64_t safe_substitution(uint64_t new, uint64_t old);
@@ -54,7 +55,7 @@ cpu_delta_t cpu_delta(const cpu_sample_t* new, const cpu_sample_t* old);
 double cpu_usage(const cpu_delta_t* d);
 const char* progress_bar(double pct, int width);
 void printw_status_line(char* name, double stat, const char* bar);
-void write_status(const char* out_path, snapshot* s);
+void write_status(const char* out_path, snapshot* s, char* datetime);
 void init_curses(void);
 
 
@@ -96,14 +97,25 @@ int main(int argc, char* argv[]) { //sysmon -f "/file/path/to/log" -v for ncurse
     int progress_bar_width = 50;
     int ch;
 
+    char* datetime = uptime_to_datetime(get_uptime());
+    if (datetime != NULL) {
+        /*printf("%s\n", datetime);*/
+        free(datetime);
+    } else {
+        return -1; /*datetime error*/
+    }
+
     if (ncurses_output) { 
         init_curses();
-        printw("sys-monitor : uptime %2lds:%2ldm:%ldh:%ldd\npress 'q' to quit. output: %s\n",
-               get_uptime()%60, (get_uptime()%3600) / 60, get_uptime() / 3600, get_uptime() / (24 * 3600), filepath);
 
+        /*strcat(datetime, const char *s2)*/
+
+        printw("sys-monitor : uptime %s\npress 'q' to quit. output: %s\n", datetime, filepath);
+        
         while ((ch = getch()) != 'q') {
             move(0, 21);
-            printw("%2lds:%2ldm:%ldh:%ldd", get_uptime()%60, (get_uptime()%3600) / 60, get_uptime() / 3600, get_uptime() / (24 * 3600));
+            datetime = uptime_to_datetime(get_uptime());
+            printw(datetime);
             move(2, 0);
 
             if (sample_loop(&s, &cpu0, &mem0, interval) != 0) return -1;
@@ -116,7 +128,7 @@ int main(int argc, char* argv[]) { //sysmon -f "/file/path/to/log" -v for ncurse
             printw_status_line("load_5m", s.loads[1], progress_bar(s.loads[1], progress_bar_width));
             printw_status_line("load_15m", s.loads[2], progress_bar(s.loads[2], progress_bar_width));
             refresh();
-            write_status(filepath, &s);
+            write_status(filepath, &s, datetime);
         }
 
         endwin();			/* End curses mode		  */
@@ -124,7 +136,7 @@ int main(int argc, char* argv[]) { //sysmon -f "/file/path/to/log" -v for ncurse
     } else {
         while(1) {
             if (sample_loop(&s, &cpu0, &mem0, interval) != 0) return -1;
-            write_status(filepath, &s);
+            write_status(filepath, &s, datetime);
         }
     }
 
@@ -261,7 +273,6 @@ int sample_memory(mem_sample_t* out) {
 
     return 0;
 }
-#endif
 
 
 long get_uptime() {
@@ -276,6 +287,25 @@ long get_uptime() {
     gettimeofday(&now, NULL);
     
     return now.tv_sec - boottime.tv_sec;
+}
+#endif
+
+
+char* uptime_to_datetime(long uptime) {
+    int size = 32;
+    char* datetime = malloc(size);
+    if (datetime == NULL) return NULL;
+
+    int bytes_written = snprintf(datetime, size, "%2lds:%2ldm:%ldh:%ldd",
+                                 uptime % 60, (uptime % 3600) / 60,
+                                 (uptime % 86400) / 3600, uptime / 86400);
+
+    if (bytes_written < 0 || bytes_written >= size) {
+        free(datetime);
+        return NULL;
+    }
+
+    return datetime;
 }
 
 
@@ -369,7 +399,7 @@ void printw_status_line(char* name, double stat, const char* bar) {
 }
 
 
-void write_status(const char* out_path, snapshot* s) {
+void write_status(const char* out_path, snapshot* s, char* datetime) {
     // Write to a temp file on the same filesystem, then rename()
     // rename() is atomic on POSIX — the swap is instantaneous
     char tmp_path[256];
@@ -377,6 +407,13 @@ void write_status(const char* out_path, snapshot* s) {
 
     FILE *f = fopen(tmp_path, "w");
     if (!f) return;
+
+    /*char* datetime = uptime_to_datetime(get_uptime());
+    if (datetime != NULL) {
+        free(datetime);
+    } else {
+        return;
+    }*/
 
     fprintf(f,
         "{\n"
@@ -388,13 +425,12 @@ void write_status(const char* out_path, snapshot* s) {
         "  \"load_5m\": %.2f,\n"
         "  \"load_15m\": %.2f,\n"
         "  \"timestamp\": %ld,\n"
-        "  \"uptime\": \"%2lds:%2ldm:%ldh:%ldd\"\n"
+        "  \"uptime\": \"%s\"\n"
         "}\n",
         s->cpu_pct, s->mem_used_b, s->mem_total_b,
         100.0 * (double)s->mem_used_b / (double)s->mem_total_b,
         s->loads[0], s->loads[1], s->loads[2], (long)time(NULL),
-        get_uptime()%60, (get_uptime()%3600) / 60, get_uptime() / 3600,
-        get_uptime() / (24 * 3600)
+        datetime
     );
 
     fflush(f);
