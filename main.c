@@ -115,7 +115,7 @@ int main(int argc, char* argv[]) { //sysmon -f "/file/path/to/log" -v for ncurse
         while ((ch = getch()) != 'q') {
             move(0, 21);
             datetime = uptime_to_datetime(get_uptime());
-            printw(datetime);
+            printw(datetime, NULL);
             move(2, 0);
 
             if (sample_loop(&s, &cpu0, &mem0, interval) != 0) return -1;
