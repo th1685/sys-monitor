@@ -134,6 +134,7 @@ int main(int argc, char* argv[]) { //sysmon -f "/file/path/to/log" -v for ncurse
 
     } else {
         while(1) {
+            datetime = uptime_to_datetime(get_uptime());
             if (sample_loop(&s, &cpu0, &mem0, interval) != 0) return -1;
             write_status(filepath, &s, datetime);
         }
@@ -209,6 +210,7 @@ long get_uptime() {
     int error = sysinfo(&s_info);
     if (error != 0) {
         printf("code error = %d\n", error);
+        return 0;
     }
     return s_info.uptime;
 }
