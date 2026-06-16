@@ -1,3 +1,4 @@
+#include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -108,8 +109,6 @@ int main(int argc, char* argv[]) { //sysmon -f "/file/path/to/log" -v for ncurse
     if (ncurses_output) { 
         init_curses();
 
-        /*strcat(datetime, const char *s2)*/
-
         printw("sys-monitor : uptime %s\npress 'q' to quit. output: %s\n", datetime, filepath);
         
         while ((ch = getch()) != 'q') {
@@ -208,8 +207,7 @@ int sample_memory(mem_sample_t* out) {
 long get_uptime() {
     struct sysinfo s_info;
     int error = sysinfo(&s_info);
-    if(error != 0)
-    {
+    if (error != 0) {
         printf("code error = %d\n", error);
     }
     return s_info.uptime;
@@ -263,6 +261,8 @@ int sample_memory(mem_sample_t* out) {
         fprintf(stderr, "host_page_size failed: %s\n", mach_error_string(vm_kr));
         return -1;
     }
+
+    page_size /= (size_t)1000; /*match kB /proc/meminfo*/
 
     out->total = 0;
     out->free = (uint64_t)vm.free_count * page_size;
@@ -418,8 +418,8 @@ void write_status(const char* out_path, snapshot* s, char* datetime) {
     fprintf(f,
         "{\n"
         "  \"cpu_pct\": %.2f,\n"
-        "  \"mem_used_b\": %lu,\n"
-        "  \"mem_total_b\": %lu,\n"
+        "  \"mem_used_kb\": %lu,\n"
+        "  \"mem_total_kb\": %lu,\n"
         "  \"mem_used_pct\": %.2f,\n"
         "  \"load_1m\": %.2f,\n"
         "  \"load_5m\": %.2f,\n"
