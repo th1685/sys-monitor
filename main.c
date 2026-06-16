@@ -9,14 +9,15 @@
 #include <string.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <sys/sysinfo.h>
 
 #if defined(__APPLE__) || defined(__MACH__)
     #define PLATFORM_MACOS
     #include <mach/mach.h>
     #include <mach/mach_host.h>
+    #include <sys/sysctl.h>
 #elif defined(unix) || defined(__unix__) || defined(__unix)
     #define PLATFORM_UNIX
+    #include <sys/sysinfo.h>
 #elif defined(_WIN32) || defined(_WIN64) || defined(CYGWIN)
     #error "windows build not supported"
 #endif
@@ -192,6 +193,17 @@ int sample_memory(mem_sample_t* out) {
 }
 
 
+long get_uptime() {
+    struct sysinfo s_info;
+    int error = sysinfo(&s_info);
+    if(error != 0)
+    {
+        printf("code error = %d\n", error);
+    }
+    return s_info.uptime;
+}
+
+
 #elif defined(PLATFORM_MACOS)
 int sample_cpu(cpu_sample_t *out) {
     host_cpu_load_info_data_t info;
@@ -253,13 +265,17 @@ int sample_memory(mem_sample_t* out) {
 
 
 long get_uptime() {
-    struct sysinfo s_info;
-    int error = sysinfo(&s_info);
-    if(error != 0)
-    {
-        printf("code error = %d\n", error);
+    struct timeval boottime, now;
+    size_t len = sizeof(boottime);
+
+    if (sysctlbyname("kern.boottime", &boottime, &len, NULL, 0) != 0) {
+        perror("sysctlbyname() error");
+        return -1;
     }
-    return s_info.uptime;
+
+    gettimeofday(&now, NULL);
+    
+    return now.tv_sec - boottime.tv_sec;
 }
 
 
