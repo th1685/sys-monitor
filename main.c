@@ -98,12 +98,12 @@ int main(int argc, char* argv[]) { //sysmon -f "/file/path/to/log" -v for ncurse
 
     if (ncurses_output) { 
         init_curses();
-        printw("sys-monitor : uptime %2lds:%2ldm:%ldh\npress 'q' to quit. output: %s\n",
-               get_uptime()%60, (get_uptime()%3600) / 60, get_uptime() / 3600, filepath);
+        printw("sys-monitor : uptime %2lds:%2ldm:%ldh:%ldd\npress 'q' to quit. output: %s\n",
+               get_uptime()%60, (get_uptime()%3600) / 60, get_uptime() / 3600, get_uptime() / (24 * 3600), filepath);
 
         while ((ch = getch()) != 'q') {
             move(0, 21);
-            printw("%2lds:%2ldm:%ldh", get_uptime()%60, (get_uptime()%3600) / 60, get_uptime() / 3600);
+            printw("%2lds:%2ldm:%ldh:%ldd", get_uptime()%60, (get_uptime()%3600) / 60, get_uptime() / 3600, get_uptime() / (24 * 3600));
             move(2, 0);
 
             if (sample_loop(&s, &cpu0, &mem0, interval) != 0) return -1;
@@ -388,12 +388,13 @@ void write_status(const char* out_path, snapshot* s) {
         "  \"load_5m\": %.2f,\n"
         "  \"load_15m\": %.2f,\n"
         "  \"timestamp\": %ld,\n"
-        "  \"uptime\": \"%2lds:%2ldm:%ldh\"\n"
+        "  \"uptime\": \"%2lds:%2ldm:%ldh:%ldd\"\n"
         "}\n",
         s->cpu_pct, s->mem_used_b, s->mem_total_b,
         100.0 * (double)s->mem_used_b / (double)s->mem_total_b,
         s->loads[0], s->loads[1], s->loads[2], (long)time(NULL),
-        get_uptime()%60, (get_uptime()%3600) / 60, get_uptime() / 3600
+        get_uptime()%60, (get_uptime()%3600) / 60, get_uptime() / 3600,
+        get_uptime() / (24 * 3600)
     );
 
     fflush(f);
