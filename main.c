@@ -167,11 +167,13 @@ int sample_loop(snapshot* s, cpu_delta_t* c, mem_sample_t* m, long interval) {
 int sample_cpu(cpu_sample_t* out) {
     /*user, nice, system, idle, iowait, irq, softirq, steal, guest, guest_nice*/
     FILE *f = fopen("/proc/stat", "r");
-    if (!f) return -1;
+    FILE *t = fopen("/sys/class/thermal/thermal_zone0/temp", "r");
+    if (!f || !t) return -1;
     const int MAX_LINE_LENGTH = 128;
-    char line[MAX_LINE_LENGTH], core_name[32];
+    char line[MAX_LINE_LENGTH], core_name[32], temp[32];
 
     fgets(line, MAX_LINE_LENGTH, f);
+    fgets(temp, MAX_LINE_LENGTH, t);
 
     if (sscanf(line, "%15s %" PRIu64 " %" PRIu64 " %" PRIu64 " %" PRIu64, 
                 core_name, &out->user, &out->nice, &out->system, &out->idle) != 5) {
